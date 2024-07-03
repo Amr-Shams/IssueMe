@@ -1,20 +1,15 @@
-name: create comment on new issue
+name: issue-checklist
+
 on:
   issues:
     types: [opened]
+
 jobs:
   comment:
     runs-on: ubuntu-latest
-    steps:
-      - name: Comment on issue
-        uses: actions/github-script@v3
-        with:
-          github-token: ${{ secrets.GITHUB_TOKEN }} 
-          script: |
-            github.issues.createComment({
-              issue_number: context.issue.number,
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              body: 'Thanks for opening this issue!'
-            })
 
+    steps:
+    - uses: ben-z/actions-comment-on-issue@1.0.2
+      with:
+        message: "Gentle reminder:\n* Did you go through all of the troubleshooting steps outlined in README.md?\n and check the opend issues?"
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
