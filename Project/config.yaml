@@ -1,0 +1,6 @@
+Transforms:
+    - match: (.*) \*/
+      replace: $1
+Keywords:
+  - FIXME
+Remote: origin

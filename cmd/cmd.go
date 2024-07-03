@@ -27,7 +27,7 @@ func NewRootCommand() *cobra.Command {
 		Use:     "IssueMe-2024",
 		Short:   "Priorities of your project(life) in 2024 ",
 		Long:    "Golang implementations for Todo priorities of your projects",
-		Example: "go run main.go list  --input ./project1  --profile",
+		Example: "go run main.go list  --input ./project1  --profile --config ./config.yaml",
 		Args:    cobra.ExactArgs(1),
 		PersistentPreRun: func(_ *cobra.Command, _ []string) {
 			if viper.GetBool("profile") {
@@ -47,9 +47,10 @@ func NewRootCommand() *cobra.Command {
 	addCommand(result)
 
 	flags := result.PersistentFlags()
-	flags.StringP("input", "i", "", "Input Project directory for the project if not provided it will use the current directory as the project directory")
+	flags.StringP("input", "i", ".", "Input Project directory for the project if not provided it will use the current directory as the project directory")
 	flags.Bool("profile", false, "Profile implementation performance")
-
+    flags.StringP("config", "c", "IssueMe.yaml", "Config file for the project")
+    // give a default value to the input flag
 	_ = viper.BindPFlags(flags)
 
 	return result
