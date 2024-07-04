@@ -45,3 +45,19 @@ func TestNewProject(t *testing.T) {
     require.NotNil(t, project.Keywords)
     require.NotNil(t, project.Remote)
 }
+func TestListFiles(t*testing.T) {
+    // set the viper string "input" to the current directory 
+    viper.Set("input", "../")
+    project := NewProject()
+    files, err := project.ListFiles()
+    require.NoError(t, err)
+    require.NotEmpty(t, files)
+}
+// func to test the listAllTodos  
+func TestListAllTodos(t *testing.T) {
+    // set the viper string "input" to the current directory 
+    viper.Set("input", "../")
+    project := NewProject()
+    _, err := listAllTodos(project.Keywords,"project.go")
+    require.NoError(t, err)
+}

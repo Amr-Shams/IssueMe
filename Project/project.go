@@ -5,6 +5,9 @@ import (
     "path/filepath"
     "log"
     "regexp"
+    "os/exec"
+    "strings"
+    "bufio"
     "gopkg.in/yaml.v3"
 )
 func locateDotGit()(string,error){
@@ -37,6 +40,63 @@ func (p *Project) LocateProject() string{
         return ""
     }
     return filepath.Dir(gitPath)
+}
+func listAllTodos(keywords []string, filePath string) ([]string,error){
+    file,err := os.Open(filePath)
+    if err != nil {
+        log.Fatalf("Failed to open file %s",filePath)
+        return nil,err
+    }
+    defer file.Close()
+    scanner := bufio.NewScanner(file)
+    todos := make([]string,0)
+    for scanner.Scan() {
+        line := scanner.Text()
+        for _,keyword := range keywords {      
+            if strings.Contains(line,keyword) {
+                todos = append(todos,line)
+                break
+            }
+        }
+    }
+    return todos,nil
+}
+// func to list all the files in the project using git ls-files 
+func (p *Project) ListFiles() ([]string,error){
+    projectPath := p.LocateProject()
+    if projectPath == "" {
+        return nil,os.ErrNotExist
+    }
+    cmd := exec.Command("git","ls-files")
+    cmd.Dir = projectPath
+    out,err := cmd.Output()
+    if err != nil {
+        log.Fatalf("Failed to list files in project %s",err.Error())
+        return nil,err
+    }
+    files := strings.Split(string(out),"\n")
+    return files,nil
+}
+
+func (p* Project) WalkFiles() error {
+    files,err := p.ListFiles()
+    if err != nil {
+        log.Fatalf("Failed to list files in project %s",err.Error())
+        return err
+    }
+    for _,file:= range files {
+        stat,err := os.Stat(file)
+        if err != nil {
+            log.Printf("Failed to stat file %s",file)
+            return err
+        }
+        if stat.IsDir() {
+          log.Printf("Skipping directory %s",file)
+        }
+        // print the file name
+        log.Println(file)
+    }
+    return nil
 }
 func NewProject() *Project {
     project := &Project{

@@ -3,4 +3,7 @@ Transforms:
       replace: $1
 Keywords:
   - FIXME
+  - TODO
+  - HACK
+  - XXX
 Remote: origin
