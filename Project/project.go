@@ -10,9 +10,31 @@ import (
 	"strings"
 
 	"github.com/Amr-Shams/IssueMe/Todo"
+	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"gopkg.in/yaml.v3"
 )
+
+func ExportCommand(root *cobra.Command) {
+	listCmd := listingCommand()
+	root.AddCommand(listCmd)
+}
+func listingCommand() *cobra.Command {
+	return &cobra.Command{
+		Use:   "list",
+		Short: "List all the todos in the project",
+		Run: func(cmd *cobra.Command, args []string) {
+			project := NewProject()
+			todos, err := project.ListAllTodos()
+			if err != nil {
+				log.Fatalf("Failed to list all todos in the project %s", err.Error())
+			}
+			for _, todo := range todos {
+				log.Println(todo.String())
+			}
+		},
+	}
+}
 
 func locateDotGit() (string, error) {
 	path := viper.GetString("input")

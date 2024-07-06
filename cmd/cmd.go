@@ -4,13 +4,14 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/Amr-Shams/IssueMe/project"
 	"github.com/pkg/profile"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
 
 func addCommand(root *cobra.Command) {
-
+	project.ExportCommand(root)
 }
 
 type prof interface {
