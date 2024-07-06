@@ -1,10 +1,11 @@
 package project
+// TODO: Add functions to walk and retrieve the files in the project directory
 
 import (
 	"testing"
-
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/require"
+	"github.com/Amr-Shams/IssueMe/Todo"
 )
 
 func TestLoadDotgit(t *testing.T) {
@@ -117,3 +118,23 @@ func TestParseLine(t *testing.T) {
 	require.Equal(t, "TODO", commentTodo.Keyword)
 	require.Equal(t, "This is a comment #", commentTodo.Prefix)
 }
+func TestListAllTodos(t *testing.T) {
+    project := NewProject()
+    todos, err := project.ListAllTodos()
+    require.NoError(t, err)
+	expected := []Todo.Todo{
+		{
+			Prefix:   "//",
+			Suffix:   " Add functions to walk and retrieve the files in the project directory",
+			Keyword:  "TODO",
+			Uergency: 0,
+			Line:     0,
+			FileName: "project.go",
+			ID:       nil,
+			Title:    " Add functions to walk and retrieve the files in the project directory",
+		},
+	}
+	require.Equal(t, expected, todos)
+}
+
+

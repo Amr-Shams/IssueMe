@@ -51,33 +51,33 @@ func (p *Project) LocateProject() string {
 	}
 	return filepath.Dir(gitPath)
 }
-func (p*Project)listAllTodos() ([]Todo.Todo, error) {
-    todos := make([]Todo.Todo, 0)
-    p.WalkFiles(func(file string) error {
-        f, err := os.Open(file)
-        if err != nil {
-            log.Printf("Failed to open file %s", file)
-            return err
-        }
-        defer f.Close()
-        reader := bufio.NewReader(f)
-        lineNum := 0
-        for {
-            line, err := reader.ReadString('\n')
-            if err != nil {
-                break
-            }
-            lineNum++
-            todo := p.parseLine(line)
-            if todo != nil {
-                todo.Line = lineNum
-                todo.FileName = file
-                todos = append(todos, *todo)
-            }
-        }
-        return nil
-    })
-    return todos, nil
+func (p *Project) ListAllTodos() ([]Todo.Todo, error) {
+	todos := make([]Todo.Todo, 0)
+	p.WalkFiles(func(file string) error {
+		f, err := os.Open(file)
+		if err != nil {
+			log.Printf("Failed to open file %s", file)
+			return err
+		}
+		defer f.Close()
+		scanner := bufio.NewScanner(f)
+		line := 0
+		for scanner.Scan() {
+			line++
+			todo := p.parseLine(scanner.Text())
+			if todo != nil {
+				todo.Line = line
+				todo.FileName = file
+				todos = append(todos, *todo)
+			}
+		}
+		if err := scanner.Err(); err != nil {
+			log.Printf("Failed to scan file %s", file)
+			return err
+		}
+		return nil
+	})
+	return todos, nil
 }
 
 // func to list all the files in the project using git ls-files
@@ -104,21 +104,21 @@ func (p *Project) WalkFiles(visitor func(string) error) error {
 		return err
 	}
 	for _, file := range files {
-		if strings.HasPrefix(file, ".") {
+		if strings.HasPrefix(file, ".") || file == "" {
 			continue
 		}
 		stat, err := os.Stat(file)
 		if err != nil {
-			log.Printf("Failed to stat file %s", file)
+			log.Printf("Failed to stat file %s with error %s", file, err.Error())
 			return err
 		}
 		if stat.IsDir() {
 			log.Printf("Skipping directory %s", file)
 		}
 		err = visitor(file)
-        if err != nil {
-            return err
-        }
+		if err != nil {
+			return err
+		}
 	}
 	return nil
 }
@@ -130,7 +130,7 @@ func NewProject() *Project {
 	}
 	configPth := viper.GetString("config")
 	if configPth == "" {
-		log.Fatal("No config file specified")
+		configPth = "config.yaml"
 	}
 	config, err := os.Open(configPth)
 	if err != nil {
@@ -206,38 +206,38 @@ func (p *Project) parseReportedTodoLine(line string) *Todo.Todo {
 
 func (p *Project) parseLine(line string) *Todo.Todo {
 	comment := checkComment(line)
-    if comment == nil {
-        return nil
-    }
-    todo := p.parseUnreportedTodoLine(comment[2])
+	if comment == nil {
+		return nil
+	}
+	todo := p.parseUnreportedTodoLine(comment[2])
 	if todo != nil {
-        if comment[1] != "" {
-            prefix:=comment[1]+todo.Prefix
-            todo.Prefix = prefix
-        }
+		if comment[1] != "" {
+			prefix := comment[1] + todo.Prefix
+			todo.Prefix = prefix
+		}
 		return todo
 	}
 
 	if todo := p.parseReportedTodoLine(comment[2]); todo != nil {
 		if comment[1] != "" {
-            prefix := comment[1] + todo.Prefix
-            todo.Prefix = prefix
-        }
-        return todo
+			prefix := comment[1] + todo.Prefix
+			todo.Prefix = prefix
+		}
+		return todo
 	}
 	return nil
 }
 func checkComment(line string) []string {
-    commentPrefixes := []string{"//", "#", "--"}
-    for _, prefix := range commentPrefixes {
-        regex := "^(.*)" +"(" +regexp.QuoteMeta(prefix) + ".*)$"
-        re := regexp.MustCompile(regex)
-        groups := re.FindStringSubmatch(line)
-        if groups != nil {
-            return groups        
-        }
-    }
-    return nil
+	commentPrefixes := []string{"//", "#", "--"}
+	for _, prefix := range commentPrefixes {
+		regex := "^(.*?)" + regexp.QuoteMeta(prefix) + "(.*)$"
+		re := regexp.MustCompile(regex)
+		groups := re.FindStringSubmatch(line)
+		if groups != nil {
+			return groups
+		}
+	}
+	return nil
 }
 
-//TODO: Add functions to walk and retrieve the files in the project directory
+// TODO: Add functions to walk and retrieve the files in the project directory

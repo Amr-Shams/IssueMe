@@ -10,7 +10,7 @@ import (
 )
 
 func addCommand(root *cobra.Command) {
-    
+
 }
 
 type prof interface {
@@ -49,8 +49,8 @@ func NewRootCommand() *cobra.Command {
 	flags := result.PersistentFlags()
 	flags.StringP("input", "i", ".", "Input Project directory for the project if not provided it will use the current directory as the project directory")
 	flags.Bool("profile", false, "Profile implementation performance")
-    flags.StringP("config", "c", "IssueMe.yaml", "Config file for the project")
-    // give a default value to the input flag
+	flags.StringP("config", "c", "config.yaml", "Config file for the project")
+	// give a default value to the input flag
 	_ = viper.BindPFlags(flags)
 
 	return result
