@@ -1,4 +1,4 @@
-package project
+package Project
 
 import (
 	"bufio"
@@ -103,41 +103,34 @@ func (p *Project) ListAllTodos() ([]Todo.Todo, error) {
 }
 
 // func to list all the files in the project using git ls-files
-func (p *Project) ListFiles() ([]string, error) {
+
+func (p *Project) WalkFiles(visitor func(string) error) error {
 	projectPath := p.LocateProject()
 	if projectPath == "" {
-		return nil, os.ErrNotExist
+		return os.ErrNotExist
 	}
 	cmd := exec.Command("git", "ls-files")
 	cmd.Dir = projectPath
 	out, err := cmd.Output()
 	if err != nil {
 		log.Fatalf("Failed to list files in project %s", err.Error())
-		return nil, err
-	}
-	files := strings.Split(string(out), "\n")
-	return files, nil
-}
-
-func (p *Project) WalkFiles(visitor func(string) error) error {
-	files, err := p.ListFiles()
-	if err != nil {
-		log.Fatalf("Failed to list files in project %s", err.Error())
 		return err
 	}
+	files := strings.Split(string(out), "\n")
 	for _, file := range files {
 		if strings.HasPrefix(file, ".") || file == "" {
 			continue
 		}
-		stat, err := os.Stat(file)
+		absPath := filepath.Join(projectPath, file)
+		stat, err := os.Stat(absPath)
 		if err != nil {
-			log.Printf("Failed to stat file %s with error %s", file, err.Error())
+			log.Printf("Failed to stat file %s with error %s", absPath, err.Error())
 			return err
 		}
 		if stat.IsDir() {
-			log.Printf("Skipping directory %s", file)
+			log.Printf("Skipping directory %s", absPath)
 		}
-		err = visitor(file)
+		err = visitor(absPath)
 		if err != nil {
 			return err
 		}
@@ -151,6 +144,8 @@ func NewProject() *Project {
 		Remote:     "origin",
 	}
 	configPth := viper.GetString("config")
+	projectPath := viper.GetString("input")
+	configPth = filepath.Join(projectPath, configPth)
 	if configPth == "" {
 		configPth = "config.yaml"
 	}
