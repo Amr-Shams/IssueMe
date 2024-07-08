@@ -1,9 +1,12 @@
 package main
 
 import (
-    "fmt"
+	"fmt"
+
+	github "github.com/Amr-Shams/IssueMe/Github"
 )
 
-func main(){
-    fmt.Println("Hello, World!")
+func main() {
+	fmt.Println("Hello, World!")
+	github.GetIssues()
 }
