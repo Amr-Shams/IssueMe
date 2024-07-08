@@ -44,10 +44,17 @@ func GetIssues() []Issue {
 		log.Fatalf("Failed to unmarshal response body: %v", err)
 	}
 
-	// Print the todos
-	for _, todo := range issues {
-		fmt.Println(todo)
-	}
+	PrintIssues(issues)
 
 	return issues
+}
+
+func PrintIssues(issues []Issue) {
+	for _, issue := range issues {
+		fmt.Println("--------------------- Issue ID:", issue.ID, "---------------------")
+		fmt.Println("Title:", issue.Title)
+		fmt.Println("Body:", issue.Body)
+		fmt.Println("----------------------------------------------------------------")
+		fmt.Println()
+	}
 }
