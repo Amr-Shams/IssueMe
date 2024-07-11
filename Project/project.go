@@ -1,5 +1,9 @@
-package project
-
+package Project
+// FIXMEEE: This is a bug
+// TODO: This is a BUG 
+// FIXME: This is a hack
+// BUG: This is a hack
+// This is bug is made by me
 import (
 	"bufio"
 	"log"
@@ -10,9 +14,31 @@ import (
 	"strings"
 
 	"github.com/Amr-Shams/IssueMe/Todo"
+	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
-	"gopkg.in/yaml.v3"
+	"gopkg.in/yaml.v2"
 )
+
+func ExportCommand(root *cobra.Command) {
+	listCmd := listingCommand()
+	root.AddCommand(listCmd)
+}
+func listingCommand() *cobra.Command {
+	return &cobra.Command{
+		Use:   "list",
+		Short: "List all the todos in the project",
+		Run: func(cmd *cobra.Command, args []string) {
+			project := NewProject()
+			todos, err := project.ListAllTodos()
+			if err != nil {
+				log.Fatalf("Failed to list all todos in the project %s", err.Error())
+			}
+			for _, todo := range todos {
+				log.Println(todo.String())
+			}
+		},
+	}
+}
 
 func locateDotGit() (string, error) {
 	path := viper.GetString("input")
@@ -25,8 +51,8 @@ func locateDotGit() (string, error) {
 }
 
 type TransformRule struct {
-	match   string
-	replace string
+	match   string `yaml:"match"`
+	replace string `yaml:"replace"`
 }
 
 func (p *Project) applyTransform(s string) string {
@@ -38,9 +64,9 @@ func (p *Project) applyTransform(s string) string {
 }
 
 type Project struct {
-	Transforms []TransformRule
-	Keywords   []string
-	Remote     string
+	Transforms []TransformRule `yaml:"Transforms"`
+	Keywords   []string        `yaml:"Keywords"`
+	Remote     string          `yaml:"Remote"`
 }
 
 func (p *Project) LocateProject() string {
@@ -51,74 +77,83 @@ func (p *Project) LocateProject() string {
 	}
 	return filepath.Dir(gitPath)
 }
-func (p*Project)listAllTodos() ([]Todo.Todo, error) {
-    todos := make([]Todo.Todo, 0)
+func (p *Project) ListAllTodos() ([]*Todo.Todo, error){
+	todos :=[]*Todo.Todo{}	
+    log.Println("Listing all todos in the project", p.Keywords)
     p.WalkFiles(func(file string) error {
-        f, err := os.Open(file)
-        if err != nil {
-            log.Printf("Failed to open file %s", file)
-            return err
-        }
-        defer f.Close()
-        reader := bufio.NewReader(f)
-        lineNum := 0
-        for {
-            line, err := reader.ReadString('\n')
-            if err != nil {
-                break
-            }
-            lineNum++
-            todo := p.parseLine(line)
-            if todo != nil {
-                todo.Line = lineNum
+		f, err := os.Open(file)
+		if err != nil {
+			log.Printf("Failed to open file %s", file)
+			return err
+		}
+		defer f.Close()
+		scanner := bufio.NewScanner(f)
+		line := 0
+        var todo *Todo.Todo
+		for scanner.Scan() {
+			line++
+		    if todo==nil{
+                todo = p.parseLine(scanner.Text())
+                if todo!=nil{
+                    todo.Line = line
+                    todo.FileName = file 
+                }
+            }else{
+               if newTodo:= p.parseLine(scanner.Text());newTodo!=nil{
+                todos = append(todos,todo)
+                todo = newTodo
+                todo.Line = line 
                 todo.FileName = file
-                todos = append(todos, *todo)
+                }else if body:= checkComment(scanner.Text());body!=nil{
+                    todo.Description = append(todo.Description,body[2])
+                }else{
+                    todos = append(todos,todo)
+                    todo= nil
+                }
             }
-        }
-        return nil
+		if err := scanner.Err(); err != nil {
+			log.Printf("Failed to scan file %s", file)
+			return err
+		}
+    }
+    return nil
+
     })
-    return todos, nil
+	return todos, nil
 }
 
 // func to list all the files in the project using git ls-files
-func (p *Project) ListFiles() ([]string, error) {
+
+func (p *Project) WalkFiles(visitor func(string) error) error {
 	projectPath := p.LocateProject()
 	if projectPath == "" {
-		return nil, os.ErrNotExist
+		return os.ErrNotExist
 	}
 	cmd := exec.Command("git", "ls-files")
 	cmd.Dir = projectPath
 	out, err := cmd.Output()
 	if err != nil {
 		log.Fatalf("Failed to list files in project %s", err.Error())
-		return nil, err
-	}
-	files := strings.Split(string(out), "\n")
-	return files, nil
-}
-
-func (p *Project) WalkFiles(visitor func(string) error) error {
-	files, err := p.ListFiles()
-	if err != nil {
-		log.Fatalf("Failed to list files in project %s", err.Error())
 		return err
 	}
+	files := strings.Split(string(out), "\n")
 	for _, file := range files {
-		if strings.HasPrefix(file, ".") {
+		if strings.HasPrefix(file, ".") || file == "" {
 			continue
 		}
-		stat, err := os.Stat(file)
+		absPath := filepath.Join(projectPath, file)
+		stat, err := os.Stat(absPath)
 		if err != nil {
-			log.Printf("Failed to stat file %s", file)
+			log.Printf("Failed to stat file %s with error %s", absPath, err.Error())
 			return err
 		}
 		if stat.IsDir() {
-			log.Printf("Skipping directory %s", file)
+			log.Printf("Skipping directory %s", absPath)
 		}
-		err = visitor(file)
-        if err != nil {
-            return err
-        }
+		err = visitor(absPath)
+		if err != nil {
+			return err
+		}
 	}
 	return nil
 }
@@ -129,8 +164,10 @@ func NewProject() *Project {
 		Remote:     "origin",
 	}
 	configPth := viper.GetString("config")
+	projectPath := viper.GetString("input")
+	configPth = filepath.Join(projectPath, configPth)
 	if configPth == "" {
-		log.Fatal("No config file specified")
+		configPth = "config.yaml"
 	}
 	config, err := os.Open(configPth)
 	if err != nil {
@@ -138,7 +175,6 @@ func NewProject() *Project {
 	}
 	defer config.Close()
 	decoder := yaml.NewDecoder(config)
-
 	if err := decoder.Decode(&project); err != nil {
 		log.Fatalf("Failed to decode config file %s with error %s", configPth, err.Error())
 	}
@@ -206,38 +242,36 @@ func (p *Project) parseReportedTodoLine(line string) *Todo.Todo {
 
 func (p *Project) parseLine(line string) *Todo.Todo {
 	comment := checkComment(line)
-    if comment == nil {
-        return nil
-    }
-    todo := p.parseUnreportedTodoLine(comment[2])
+	if comment == nil {
+		return nil
+	}
+	todo := p.parseUnreportedTodoLine(comment[2])
 	if todo != nil {
-        if comment[1] != "" {
-            prefix:=comment[1]+todo.Prefix
-            todo.Prefix = prefix
-        }
+		if comment[1] != "" {
+			prefix := comment[1] + todo.Prefix
+			todo.Prefix = prefix
+		}
 		return todo
 	}
 
 	if todo := p.parseReportedTodoLine(comment[2]); todo != nil {
 		if comment[1] != "" {
-            prefix := comment[1] + todo.Prefix
-            todo.Prefix = prefix
-        }
-        return todo
+			prefix := comment[1] + todo.Prefix
+			todo.Prefix = prefix
+		}
+		return todo
 	}
 	return nil
 }
 func checkComment(line string) []string {
-    commentPrefixes := []string{"//", "#", "--"}
-    for _, prefix := range commentPrefixes {
-        regex := "^(.*)" +"(" +regexp.QuoteMeta(prefix) + ".*)$"
-        re := regexp.MustCompile(regex)
-        groups := re.FindStringSubmatch(line)
-        if groups != nil {
-            return groups        
-        }
-    }
-    return nil
+	commentPrefixes := []string{"//", "#", "--"}
+	for _, prefix := range commentPrefixes {
+		regex := "^(.*?)" + regexp.QuoteMeta(prefix) + "(.*)$"
+		re := regexp.MustCompile(regex)
+		groups := re.FindStringSubmatch(line)
+		if groups != nil {
+			return groups
+		}
+	}
+	return nil
 }
-
-//TODO: Add functions to walk and retrieve the files in the project directory

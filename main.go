@@ -1,9 +1,11 @@
 package main
 
 import (
-    "fmt"
+	"github.com/Amr-Shams/IssueMe/cmd"
 )
 
-func main(){
-    fmt.Println("Hello, World!")
+func main() {
+	if err := cmd.NewRootCommand().Execute(); err != nil {
+		panic(err)
+	}
 }
