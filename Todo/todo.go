@@ -22,9 +22,13 @@ func (t *Todo) String() string {
     if t.ID!=nil {
         idStr="("+*t.ID+")"
     }
-   return fmt.Sprintf("%s%s%s%s: %s",
-		t.Prefix, t.Keyword, urgencySuffix, idStr,
-		t.Suffix)
+   return fmt.Sprintf("%s%s%s: %s\n %s",
+		 t.Keyword, urgencySuffix, idStr,
+		t.Suffix, stringfyDescription(t.Description))
+}
+
+func stringfyDescription(description []string) string {
+    return strings.Join(description, "\n")
 }
 
 

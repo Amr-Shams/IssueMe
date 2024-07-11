@@ -1,10 +1,11 @@
 Transforms:
-    - match: (.*) \*/
-      replace: $1
+  - match: (.*) \*/
+    replace: $1
+  - match: \s*-\s*(.*)\s*$
+    replace: $1
 Keywords:
-  - FIXME
   - TODO
-  - HACK
-  - XXX
-  - YOURMOM
-Remote: origin
+  - FIXME
+  - BUG
+  - NOTE
+Remote: "origin"
