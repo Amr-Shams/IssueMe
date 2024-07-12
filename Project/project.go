@@ -3,7 +3,9 @@ package Project
 // TODO: This is a BUG 
 // FIXME: This is a hack
 // BUG: This is a hack
-// This is bug is made by me
+// This is bug is made by me 
+// TODOOOO: this is the most important thing 
+// BUGGGGGGG: This is a bug number 1 
 import (
 	"bufio"
 	"log"
@@ -12,7 +14,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
-
+    "sort"
 	"github.com/Amr-Shams/IssueMe/Todo"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -33,6 +35,9 @@ func listingCommand() *cobra.Command {
 			if err != nil {
 				log.Fatalf("Failed to list all todos in the project %s", err.Error())
 			}
+            sort.Slice(todos,func(i,j int) bool{
+                return todos[i].Uergency > todos[j].Uergency
+            })
 			for _, todo := range todos {
 				log.Println(todo.String())
 			}
