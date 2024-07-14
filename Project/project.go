@@ -1,4 +1,5 @@
 package Project
+
 // FIXMEEE: This is a bug
 // TODO: This is a BUG 
 // FIXME: This is a hack
@@ -13,6 +14,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"regexp"
+	"sort"
 	"strings"
     "sort"
 	"github.com/Amr-Shams/IssueMe/Todo"
@@ -82,10 +84,11 @@ func (p *Project) LocateProject() string {
 	}
 	return filepath.Dir(gitPath)
 }
-func (p *Project) ListAllTodos() ([]*Todo.Todo, error){
-	todos :=[]*Todo.Todo{}	
-    log.Println("Listing all todos in the project", p.Keywords)
-    p.WalkFiles(func(file string) error {
+func (p *Project) ListAllTodos() ([]*Todo.Todo, error) {
+	todos := []*Todo.Todo{}
+	log.Println("Listing all todos in the project", p.Keywords)
+	p.WalkFiles(func(file string) error {
+
 		f, err := os.Open(file)
 		if err != nil {
 			log.Printf("Failed to open file %s", file)
@@ -94,36 +97,36 @@ func (p *Project) ListAllTodos() ([]*Todo.Todo, error){
 		defer f.Close()
 		scanner := bufio.NewScanner(f)
 		line := 0
-        var todo *Todo.Todo
+		var todo *Todo.Todo
 		for scanner.Scan() {
 			line++
-		    if todo==nil{
-                todo = p.parseLine(scanner.Text())
-                if todo!=nil{
-                    todo.Line = line
-                    todo.FileName = file 
-                }
-            }else{
-               if newTodo:= p.parseLine(scanner.Text());newTodo!=nil{
-                todos = append(todos,todo)
-                todo = newTodo
-                todo.Line = line 
-                todo.FileName = file
-                }else if body:= checkComment(scanner.Text());body!=nil{
-                    todo.Description = append(todo.Description,body[2])
-                }else{
-                    todos = append(todos,todo)
-                    todo= nil
-                }
-            }
-		if err := scanner.Err(); err != nil {
-			log.Printf("Failed to scan file %s", file)
-			return err
+			if todo == nil {
+				todo = p.parseLine(scanner.Text())
+				if todo != nil {
+					todo.Line = line
+					todo.FileName = file
+				}
+			} else {
+				if newTodo := p.parseLine(scanner.Text()); newTodo != nil {
+					todos = append(todos, todo)
+					todo = newTodo
+					todo.Line = line
+					todo.FileName = file
+				} else if body := checkComment(scanner.Text()); body != nil {
+					todo.Description += body[2] + "\n"
+				} else {
+					todos = append(todos, todo)
+					todo = nil
+				}
+			}
+			if err := scanner.Err(); err != nil {
+				log.Printf("Failed to scan file %s", file)
+				return err
+			}
 		}
-    }
-    return nil
+		return nil
 
-    })
+	})
 	return todos, nil
 }
 

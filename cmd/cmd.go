@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/Amr-Shams/IssueMe/Github"
 	"github.com/Amr-Shams/IssueMe/Project"
 	"github.com/pkg/profile"
 	"github.com/spf13/cobra"
@@ -11,6 +12,7 @@ import (
 )
 
 func addCommand(root *cobra.Command) {
+	github.ExportCommand(root)
 	Project.ExportCommand(root)
 }
 
@@ -51,7 +53,6 @@ func NewRootCommand() *cobra.Command {
 	flags.StringP("input", "i", ".", "Input Project directory for the project if not provided it will use the current directory as the project directory")
 	flags.Bool("profile", false, "Profile implementation performance")
 	flags.StringP("config", "c", "config.yaml", "Config file for the project")
-	// give a default value to the input flag
 	_ = viper.BindPFlags(flags)
 
 	return result

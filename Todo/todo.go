@@ -8,7 +8,7 @@ type Todo struct {
     Prefix        string
     Suffix        string
     Keyword       string
-    Description  []string
+    Description   string
     Uergency      int
     ID            *string 
     FileName      string
@@ -24,11 +24,9 @@ func (t *Todo) String() string {
     }
    return fmt.Sprintf("%s%s%s: %s\n %s",
 		 t.Keyword, urgencySuffix, idStr,
-		t.Suffix, stringfyDescription(t.Description))
+		t.Suffix, t.Description)
 }
 
-func stringfyDescription(description []string) string {
-    return strings.Join(description, "\n")
+func (t *Todo) LogString() string{
+    return fmt.Sprintf("%s:%d: %s", t.FileName, t.Line, t.String())
 }
-
-
