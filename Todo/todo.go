@@ -8,7 +8,7 @@ type Todo struct {
     Prefix        string
     Suffix        string
     Keyword       string
-    Description  []string
+    Description   string
     Uergency      int
     ID            *string 
     FileName      string

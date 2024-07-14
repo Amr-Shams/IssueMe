@@ -1,15 +1,22 @@
 package github
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
 	"log"
 	"net/http"
-    "os/exec"
-    "github.com/spf13/viper"
-    "strings"
-    
+	"os"
+	"os/exec"
+	"strconv"
+	"strings"
+
+	"github.com/Amr-Shams/IssueMe/Todo"
+	"github.com/google/go-github/v39/github"
+	"github.com/joho/godotenv"
+	"github.com/spf13/viper"
+	"golang.org/x/oauth2"
 )
 
 type Issue struct {
@@ -24,35 +31,66 @@ type Issue struct {
 // 	description := todo.Description
 
 // }
-func listAllIssues(){
-    cmd:= exec.Command("gh", "issue", "list")
-    projectDir := viper.GetString("input")
-    cmd.Dir = projectDir
-    out, err := cmd.Output()
-    if err != nil {
-        fmt.Errorf("Failed to list issues: %v", err)  
-    }
-    fmt.Println(string(out))
+func listAllIssues() {
+	cmd := exec.Command("gh", "issue", "list")
+	projectDir := viper.GetString("input")
+	cmd.Dir = projectDir
+	out, err := cmd.Output()
+	if err != nil {
+		fmt.Errorf("Failed to list issues: %v", err)
+	}
+	fmt.Println(string(out))
 }
 
-
-func getGithubURL() string{
-    cmd := exec.Command("git", "remote", "-v")
-    projectDir := viper.GetString("input")
-    cmd.Dir = projectDir
-    out, err := cmd.Output()
-    if err != nil {
-        fmt.Errorf("Failed to get remote url: %v", err)  
-    }
-    _,url := strings.Fields(string(out))[0], strings.Fields(string(out))[1]
-    url = strings.TrimSuffix(url, ".git")
-    url = strings.Replace(url, "github.com", "api.github.com/repos", 1)
-    return url 
+func getRepoInfo() (owner, repo string, err error) {
+	cmd := exec.Command("git", "config", "--get", "remote.origin.url")
+	output, err := cmd.Output()
+	if err != nil {
+		return "", "", err
+	}
+	url := strings.TrimSpace(string(output))
+	parts := strings.Split(url, "/")
+	repoPart := parts[len(parts)-1]
+	repo = strings.TrimSuffix(repoPart, ".git")
+	owner = parts[len(parts)-2]
+	return owner, repo, nil
 }
+func FireIssue(todo *Todo.Todo) error {
+	projectDir := viper.GetString("input")
+	err := godotenv.Load(projectDir + "/.env")
+	if err != nil {
+		log.Fatalf("Error loading .env file: %v", err)
+	}
+	// load the environment variables GITHUB_TOKEN
+	token := os.Getenv("GITHUB_TOKEN")
+	ctx := context.Background()
+	ts := oauth2.StaticTokenSource(&oauth2.Token{AccessToken: token})
+	tc := oauth2.NewClient(ctx, ts)
+	client := github.NewClient(tc)
+	owner, repo, err := getRepoInfo()
+	if err != nil {
+		log.Fatalf("Failed to get github url: %v", err)
+	}
 
+	issue := &github.IssueRequest{
+		Title: &todo.Title,
+		Body:  &todo.Description,
+	}
+	var issu2 *github.Issue
+	issu2, _, err = client.Issues.Create(ctx, owner, repo, issue)
+	if err != nil {
+		log.Fatalf("Failed to create issue: %v", err)
+	}
+    id:=strconv.Itoa(issu2.GetNumber())
+    todo.ID=&id
+	return nil
+}
 func GetIssues() []Issue {
-	url := getGithubURL() + "/issues"
-
+	owner, repo, err := getRepoInfo()
+	if err != nil {
+		log.Fatalf("Failed to get github url: %v", err)
+	}
+	url := fmt.Sprintf("https://api.github.com/repos/%s/%s/issues", owner, repo)
 	// Create an HTTP GET request
 	resp, err := http.Get(url)
 	if err != nil {
@@ -60,7 +98,7 @@ func GetIssues() []Issue {
 	}
 	defer resp.Body.Close()
 
-// Read the response body
+	// Read the response body
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		log.Fatalf("Failed to read response body: %v", err)
