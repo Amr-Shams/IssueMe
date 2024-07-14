@@ -22,9 +22,12 @@ func (t *Todo) String() string {
     if t.ID!=nil {
         idStr="("+*t.ID+")"
     }
-   return fmt.Sprintf("%s%s%s%s: %s",
-		t.Prefix, t.Keyword, urgencySuffix, idStr,
-		t.Suffix)
+   return fmt.Sprintf("%s%s%s: %s\n %s",
+		 t.Keyword, urgencySuffix, idStr,
+		t.Suffix, t.Description)
 }
 
 
+func (t *Todo) LogString() string{
+    return fmt.Sprintf("%s:%d: %s", t.FileName, t.Line, t.String())
+}

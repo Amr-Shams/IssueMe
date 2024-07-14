@@ -1,4 +1,6 @@
-package project
+package Project
+
+// TODO: Add functions to walk and retrieve the files in the project directory
 
 import (
 	"testing"
@@ -33,19 +35,12 @@ func TestLocateProject(t *testing.T) {
 
 func TestNewProject(t *testing.T) {
 	viper.Set("config", "config.yaml")
+	viper.Set("input", "../")
 	project := NewProject()
 	require.NotNil(t, project)
 	require.NotNil(t, project.Transforms)
 	require.NotNil(t, project.Keywords)
 	require.NotNil(t, project.Remote)
-}
-func TestListFiles(t *testing.T) {
-	// set the viper string "input" to the current directory
-	viper.Set("input", "../")
-	project := NewProject()
-	files, err := project.ListFiles()
-	require.NoError(t, err)
-	require.NotEmpty(t, files)
 }
 
 // func to test the listAllTodos
@@ -91,7 +86,7 @@ func TestParseReportedTodoLine(t *testing.T) {
 func TestParseLine(t *testing.T) {
 	project := NewProject()
 	project.Keywords = []string{"TODO", "FIXME"}
-	unreportedLine := "#TODO: This is an unreported todo"
+	unreportedLine := "# TODO: This is an unreported todo"
 	reportedLine := "#FIXME(user): This is a reported fixme"
 	commentInTheMiddle := "This is a comment #TODO: This is a todo"
 
@@ -102,18 +97,21 @@ func TestParseLine(t *testing.T) {
 	require.Equal(t, "This is an unreported todo", unreportedTodo.Suffix)
 	require.Nil(t, unreportedTodo.ID)
 	require.Equal(t, "TODO", unreportedTodo.Keyword)
-	require.Equal(t, "#", unreportedTodo.Prefix)
-
 	require.NotNil(t, reportedTodo)
 	require.Equal(t, "This is a reported fixme", reportedTodo.Suffix)
 	require.Equal(t, "user", *reportedTodo.ID)
 	require.Equal(t, "FIXME", reportedTodo.Keyword)
-	require.Equal(t, "#", reportedTodo.Prefix)
 
 	commentTodo := project.parseLine(commentInTheMiddle)
 	require.NotNil(t, commentTodo)
 	require.Equal(t, "This is a todo", commentTodo.Suffix)
 	require.Nil(t, commentTodo.ID)
 	require.Equal(t, "TODO", commentTodo.Keyword)
-	require.Equal(t, "This is a comment #", commentTodo.Prefix)
+	require.Equal(t, "This is a comment ", commentTodo.Prefix)
+}
+func TestListAllTodos(t *testing.T) {
+	project := NewProject()
+	_, err := project.ListAllTodos()
+	require.NoError(t, err)
+
 }

@@ -12,9 +12,14 @@ import (
 	"strconv"
 	"strings"
 
+	"sort"
+
+	"github.com/AlecAivazis/survey/v2"
+	Project "github.com/Amr-Shams/IssueMe/Project"
 	"github.com/Amr-Shams/IssueMe/Todo"
 	"github.com/google/go-github/v39/github"
 	"github.com/joho/godotenv"
+	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"golang.org/x/oauth2"
 )
@@ -25,12 +30,59 @@ type Issue struct {
 	Body  string `json:"body"`
 }
 
-// // TODO: Add functions to get/post issues from github
-// func postIssue(todo *Todo.Todo) {
-// 	title := todo.Title
-// 	description := todo.Description
-
-// }
+func ExportCommand(root *cobra.Command) {
+	reportCmd := reportCommand()
+	root.AddCommand(reportCmd)
+}
+func reportCommand() *cobra.Command {
+	return &cobra.Command{
+		Use:   "report",
+		Short: "List all the todos in the project and create issues for them",
+		Run: func(cmd *cobra.Command, args []string) {
+			project := Project.NewProject()
+			todos, err := project.ListAllTodos()
+			if err != nil {
+				log.Fatalf("Failed to list all todos in the project %s", err.Error())
+			}
+			sort.Slice(todos, func(i, j int) bool {
+				return todos[i].Uergency > todos[j].Uergency
+			})
+			selected := CheckBoxes("Select the todos you want to create issues for", todos)
+			fmt.Printf("Selected %d todos\n", len(selected))
+			for _, todo := range selected {
+				fmt.Printf("Creating issue for %s\n", todo.String())
+				err := FireIssue(todo)
+				if err != nil {
+					log.Fatalf("Failed to create issue: %v", err)
+				}
+				fmt.Println("Issue created successfully")
+				fmt.Println("Issue ID: ", *todo.ID)
+			}
+		},
+	}
+}
+func convertTodosToOptions(todos []*Todo.Todo) []string {
+	var options []string
+	for _, todo := range todos {
+		options = append(options, todo.LogString())
+	}
+	return options
+}
+func CheckBoxes(label string, todos []*Todo.Todo) []*Todo.Todo {
+    var selectedIndices []int 
+    options := convertTodosToOptions(todos)
+    prompt := &survey.MultiSelect{
+        Message: label,
+        Options: options,
+    }
+    survey.AskOne(prompt, &selectedIndices)
+	fmt.Println(selectedIndices)
+    var selectedTodos []*Todo.Todo
+    for _, index := range selectedIndices {
+        selectedTodos = append(selectedTodos, todos[index])
+    }
+    return selectedTodos
+}
 func listAllIssues() {
 	cmd := exec.Command("gh", "issue", "list")
 	projectDir := viper.GetString("input")
@@ -81,8 +133,8 @@ func FireIssue(todo *Todo.Todo) error {
 	if err != nil {
 		log.Fatalf("Failed to create issue: %v", err)
 	}
-    id:=strconv.Itoa(issu2.GetNumber())
-    todo.ID=&id
+	id := strconv.Itoa(issu2.GetNumber())
+	todo.ID = &id
 	return nil
 }
 func GetIssues() []Issue {
