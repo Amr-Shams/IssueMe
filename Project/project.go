@@ -1,12 +1,12 @@
 package Project
 
 // FIXMEEE: This is a bug
-// TODO: This is a BUG
+// TODO: This is a BUG 
 // FIXME: This is a hack
 // BUG: This is a hack
-// This is bug is made by me
-// TODOOOO: this is the most important thing
-// BUGGGGGGG: This is a bug number 1
+// This is bug is made by me 
+// TODOOOO: this is the most important thing 
+// BUGGGGGGG: This is a bug number 1 
 import (
 	"bufio"
 	"log"
@@ -16,7 +16,7 @@ import (
 	"regexp"
 	"sort"
 	"strings"
-
+    "sort"
 	"github.com/Amr-Shams/IssueMe/Todo"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -37,9 +37,9 @@ func listingCommand() *cobra.Command {
 			if err != nil {
 				log.Fatalf("Failed to list all todos in the project %s", err.Error())
 			}
-			sort.Slice(todos, func(i, j int) bool {
-				return todos[i].Uergency > todos[j].Uergency
-			})
+            sort.Slice(todos,func(i,j int) bool{
+                return todos[i].Uergency > todos[j].Uergency
+            })
 			for _, todo := range todos {
 				log.Println(todo.String())
 			}
@@ -88,6 +88,7 @@ func (p *Project) ListAllTodos() ([]*Todo.Todo, error) {
 	todos := []*Todo.Todo{}
 	log.Println("Listing all todos in the project", p.Keywords)
 	p.WalkFiles(func(file string) error {
+
 		f, err := os.Open(file)
 		if err != nil {
 			log.Printf("Failed to open file %s", file)

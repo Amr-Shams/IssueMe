@@ -27,7 +27,6 @@ func (t *Todo) String() string {
 		t.Suffix, t.Description)
 }
 
-
 func (t *Todo) LogString() string{
     return fmt.Sprintf("%s:%d: %s", t.FileName, t.Line, t.String())
 }

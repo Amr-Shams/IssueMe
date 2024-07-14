@@ -14,7 +14,6 @@ import (
 func addCommand(root *cobra.Command) {
 	github.ExportCommand(root)
 	Project.ExportCommand(root)
-
 }
 
 type prof interface {
