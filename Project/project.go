@@ -1,15 +1,20 @@
 package Project
 
-// FIXMEEE: This is a bug
-// TODO: This is a BUG 
-// FIXME: This is a hack
-// BUG: This is a hack
+// FIXMEEE(49): This is a bug
+// TODO: This is a BUG
+// FIXME(44): This is a hack
+// BUG(43): This is a hack
 // This is bug is made by me
-// this bug is intentional
+
+// BUG(43): This is a hack
+// This is bug is made by me
+
+// This is bug is made by me
 // TODOOOO: this is the most important thing
-// BUGGGGGGG: This is a bug number 1
+// TODO: we should beutify the logs (slogan)
 import (
 	"bufio"
+	"fmt"
 	"log"
 	"os"
 	"os/exec"
@@ -17,7 +22,7 @@ import (
 	"regexp"
 	"sort"
 	"strings"
-    "sort"
+
 	"github.com/Amr-Shams/IssueMe/Todo"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -34,15 +39,24 @@ func listingCommand() *cobra.Command {
 		Short: "List all the todos in the project",
 		Run: func(cmd *cobra.Command, args []string) {
 			project := NewProject()
-			todos, err := project.ListAllTodos()
+			reportedTodos, unreportedTodos, err := project.ListAllTodos()
 			if err != nil {
 				log.Fatalf("Failed to list all todos in the project %s", err.Error())
 			}
-            sort.Slice(todos,func(i,j int) bool{
-                return todos[i].Uergency > todos[j].Uergency
-            })
-			for _, todo := range todos {
-				log.Println(todo.String())
+			sort.Slice(reportedTodos, func(i, j int) bool {
+				return reportedTodos[i].Uergency > reportedTodos[j].Uergency
+			})
+			sort.Slice(unreportedTodos, func(i, j int) bool {
+				return unreportedTodos[i].Uergency > unreportedTodos[j].Uergency
+			})
+			for _, todo := range reportedTodos {
+				log.Printf(todo.LogString())
+			}
+			// print a separator between reported and unreported todos
+			fmt.Println("-------------------------------------------------")
+			for _, todo := range unreportedTodos {
+
+				log.Printf(todo.LogString())
 			}
 		},
 	}
@@ -85,11 +99,9 @@ func (p *Project) LocateProject() string {
 	}
 	return filepath.Dir(gitPath)
 }
-func (p *Project) ListAllTodos() ([]*Todo.Todo, error) {
-	todos := []*Todo.Todo{}
-	log.Println("Listing all todos in the project", p.Keywords)
-	p.WalkFiles(func(file string) error {
 
+func (p *Project) ListAllTodos() (reportedTodos []*Todo.Todo, unreportedTodos []*Todo.Todo, err error) {
+	p.WalkFiles(func(file string) error {
 		f, err := os.Open(file)
 		if err != nil {
 			log.Printf("Failed to open file %s", file)
@@ -109,14 +121,24 @@ func (p *Project) ListAllTodos() ([]*Todo.Todo, error) {
 				}
 			} else {
 				if newTodo := p.parseLine(scanner.Text()); newTodo != nil {
-					todos = append(todos, todo)
+					if todo.ID != nil {
+						reportedTodos = append(reportedTodos, todo)
+					} else {
+						unreportedTodos = append(unreportedTodos, todo)
+					}
 					todo = newTodo
 					todo.Line = line
 					todo.FileName = file
 				} else if body := checkComment(scanner.Text()); body != nil {
-					todo.Description += body[2] + "\n"
+					todo.Description = append(todo.Description, body[1])
+					todo.Description = append(todo.Description, body[3])
+					todo.Description = append(todo.Description, body[2])
 				} else {
-					todos = append(todos, todo)
+					if todo.ID != nil {
+						reportedTodos = append(reportedTodos, todo)
+					} else {
+						unreportedTodos = append(unreportedTodos, todo)
+					}
 					todo = nil
 				}
 			}
@@ -124,11 +146,12 @@ func (p *Project) ListAllTodos() ([]*Todo.Todo, error) {
 				log.Printf("Failed to scan file %s", file)
 				return err
 			}
+
 		}
 		return nil
-
 	})
-	return todos, nil
+	return reportedTodos, unreportedTodos, nil
+
 }
 
 // func to list all the files in the project using git ls-files
@@ -194,11 +217,11 @@ func NewProject() *Project {
 }
 
 func unreportedTodoRgex(keyword string) string {
-	return "^(.*)" + regexp.QuoteMeta(keyword) + "(" + regexp.QuoteMeta(keyword[len(keyword)-1:]) + "*): (.*)$"
+	return "^(.*)" + regexp.QuoteMeta(keyword) + "(" + regexp.QuoteMeta(keyword[len(keyword)-1:]) + "*):(.*)$"
 }
 
 func reportedTodoRgex(keyword string) string {
-	return "^(.*)" + regexp.QuoteMeta(keyword) + "(" + regexp.QuoteMeta(keyword[len(keyword)-1:]) + "*)" + "\\((.*)\\): (.*)$"
+	return "^(.*)" + regexp.QuoteMeta(keyword) + "(" + regexp.QuoteMeta(keyword[len(keyword)-1:]) + "*)" + "\\((.*)\\):(.*)$"
 }
 func (p *Project) parseUnreportedTodoLine(line string) *Todo.Todo {
 	for _, k := range p.Keywords {
@@ -254,20 +277,12 @@ func (p *Project) parseLine(line string) *Todo.Todo {
 	if comment == nil {
 		return nil
 	}
-	todo := p.parseUnreportedTodoLine(comment[2])
-	if todo != nil {
-		if comment[1] != "" {
-			prefix := comment[1] + todo.Prefix
-			todo.Prefix = prefix
-		}
+	if todo := p.parseUnreportedTodoLine(comment[2]); todo != nil {
+		todo.Prefix = comment[1] + comment[3] + todo.Prefix
 		return todo
 	}
-
 	if todo := p.parseReportedTodoLine(comment[2]); todo != nil {
-		if comment[1] != "" {
-			prefix := comment[1] + todo.Prefix
-			todo.Prefix = prefix
-		}
+		todo.Prefix = comment[1] + comment[3] + todo.Prefix
 		return todo
 	}
 	return nil
@@ -279,6 +294,7 @@ func checkComment(line string) []string {
 		re := regexp.MustCompile(regex)
 		groups := re.FindStringSubmatch(line)
 		if groups != nil {
+			groups = append(groups, prefix)
 			return groups
 		}
 	}
