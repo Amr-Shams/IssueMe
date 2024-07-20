@@ -13,6 +13,7 @@ import (
 	"strings"
 
 	"sort"
+    "slice"
 
 	"github.com/AlecAivazis/survey/v2"
 	Project "github.com/Amr-Shams/IssueMe/Project"
@@ -28,6 +29,7 @@ type Issue struct {
 	ID    int    `json:"id"`
 	Title string `json:"title"`
 	Body  string `json:"body"`
+    State string `json:"state"`
 }
 
 func ExportCommand(root *cobra.Command) {
@@ -60,6 +62,40 @@ func reportCommand() *cobra.Command {
 			}
 		},
 	}
+}
+func convertIssuesToOptions(issues []Issue) []string {
+    var options []string
+    for _, issue := range issues {
+        options = append(options, issue.Title)
+    }
+    return options
+}
+func DeleteIssues() []Issue {
+    issues := GetIssues() 
+    issues = slice.Delete(issues, func(i int) bool {
+        return issues[i].State == "open"
+    })
+    options := convertIssuesToOptions(issues) 
+    prompt := &survey.MultiSelect{ 
+        Message: "Select the issues you want to delete",
+        Options: options,
+    }
+    var selectedIndices []int 
+    survey.AskOne(prompt, &selectedIndices) 
+    var selectedIssues []Issue 
+    for _, index := range selectedIndices {
+        selectedIssues = append(selectedIssues, issues[index])
+    }
+    return selectedIssues
+    
+}
+func PurgeIssues(todo *Todo.Todo, client *github.Client, owner, repo string) {
+   issueURL := fmt.Sprintf("https://api.github.com/repos/%s/%s/issues/%s", owner, repo, *todo.ID)
+    _, err := client.Issues.Delete(ctx, owner, repo, *todo.ID)
+    if err != nil {
+        log.Fatalf("Failed to delete issue: %v", err)
+    }
+    todo.Remove()
 }
 func convertTodosToOptions(todos []*Todo.Todo) []string {
 	var options []string
@@ -107,18 +143,21 @@ func getRepoInfo() (owner, repo string, err error) {
 	owner = parts[len(parts)-2]
 	return owner, repo, nil
 }
+func createClient() *github.Client {
+    projectDir := viper.GetString("input")
+    err := godotenv.Load(projectDir + "/.env") 
+    if err != nil {
+        log.Fatalf("Error loading .env file: %v", err)
+    }
+    token := os.Getenv("GITHUB_TOKEN")
+    ctx := context.Background()
+    ts := oauth2.StaticTokenSource(&oauth2.Token{AccessToken: token})
+    tc := oauth2.NewClient(ctx, ts)
+    client := github.NewClient(tc)
+    return Client
+}
 func FireIssue(todo *Todo.Todo) error {
-	projectDir := viper.GetString("input")
-	err := godotenv.Load(projectDir + "/.env")
-	if err != nil {
-		log.Fatalf("Error loading .env file: %v", err)
-	}
-	// load the environment variables GITHUB_TOKEN
-	token := os.Getenv("GITHUB_TOKEN")
-	ctx := context.Background()
-	ts := oauth2.StaticTokenSource(&oauth2.Token{AccessToken: token})
-	tc := oauth2.NewClient(ctx, ts)
-	client := github.NewClient(tc)
+    client := createClient()
 	owner, repo, err := getRepoInfo()
 	if err != nil {
 		log.Fatalf("Failed to get github url: %v", err)
@@ -162,8 +201,6 @@ func GetIssues() []Issue {
 	if err != nil {
 		log.Fatalf("Failed to unmarshal response body: %v", err)
 	}
-
-	PrintIssues(issues)
 
 	return issues
 }

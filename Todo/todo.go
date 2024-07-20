@@ -26,7 +26,9 @@ func (t *Todo) String() string {
 		 t.Keyword, urgencySuffix, idStr,
 		t.Suffix, t.Description)
 }
-
+func Remove(){
+    
+}
 
 func (t *Todo) LogString() string{
     return fmt.Sprintf("%s:%d: %s", t.FileName, t.Line, t.String())
