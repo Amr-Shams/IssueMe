@@ -33,7 +33,9 @@ type Issue struct {
 
 func ExportCommand(root *cobra.Command) {
 	reportCmd := reportCommand()
+	purgeCmd := purgeCommand()
 	root.AddCommand(reportCmd)
+	root.AddCommand(purgeCmd)
 }
 func reportCommand() *cobra.Command {
 	return &cobra.Command{
@@ -45,6 +47,7 @@ func reportCommand() *cobra.Command {
 			if err != nil {
 				log.Fatalf("Failed to list all todos in the project %s", err.Error())
 			}
+
 			sort.Slice(todos, func(i, j int) bool {
 				return todos[i].Uergency > todos[j].Uergency
 			})
@@ -62,46 +65,55 @@ func reportCommand() *cobra.Command {
 		},
 	}
 }
-func convertIssuesToOptions(issues []Issue) []string {
-	var options []string
-	for _, issue := range issues {
-		options = append(options, issue.Title)
+
+func purgeCommand() *cobra.Command {
+	return &cobra.Command{
+		Use:   "purge",
+		Short: "Delete all closed issues",
+		Run: func(cmd *cobra.Command, args []string) {
+			project := Project.NewProject()
+			todo, _, err := project.ListAllTodos()
+			if err != nil {
+				log.Fatalf("Failed to list all todos in the project %s", err.Error())
+			}
+			todos := FilterTodos(todo)
+			sort.Slice(todos, func(i, j int) bool {
+				return todos[i].Uergency > todos[j].Uergency
+			})
+			selected := CheckBoxes("Select the todos you want to delete issues for", todos)
+
+			projectDir := viper.GetString("input")
+			for _, issue := range selected {
+				issue.Remove(projectDir)
+			}
+		},
 	}
-	return options
 }
-func DeleteIssues() []Issue {
-	issues := GetIssues()
-	var filteredIssues []Issue
-	for _, issue := range issues {
-		if issue.State != "open" {
-			filteredIssues = append(filteredIssues, issue)
+
+func FilterTodos(todos []*Todo.Todo) []*Todo.Todo {
+	client, ctx := createClient()
+	owner, repo, err := getRepoInfo()
+	if err != nil {
+		log.Fatalf("Failed to get github url: %v", err)
+	}
+	var filteredTodos []*Todo.Todo
+	for _, todo := range todos {
+		id, err := strconv.Atoi(*todo.ID)
+		if err != nil {
+			log.Printf("Failed to convert issue id to int: %v", err)
+			continue
+		}
+		issue, _, err := client.Issues.Get(ctx, owner, repo, id)
+		if err != nil {
+			log.Fatalf("Failed to get issue: %v", err)
+		}
+		if issue.GetState() == "closed" {
+			filteredTodos = append(filteredTodos, todo)
 		}
 	}
-	issues = filteredIssues
-	options := convertIssuesToOptions(issues)
-	prompt := &survey.MultiSelect{
-		Message: "Select the issues you want to delete",
-		Options: options,
-	}
-	var selectedIndices []int
-	survey.AskOne(prompt, &selectedIndices)
-	var selectedIssues []Issue
-	for _, index := range selectedIndices {
-		selectedIssues = append(selectedIssues, issues[index])
-	}
-	return selectedIssues
+	return filteredTodos
+}
 
-}
-func PurgeIssues(todo *Todo.Todo, client *github.Client, owner, repo string, ctx context.Context) {
-	id, _ := strconv.Atoi(*todo.ID)
-	issue, _, err := client.Issues.Get(ctx, owner, repo, id)
-	if err != nil {
-		log.Fatalf("Failed to get issue: %v", err)
-	}
-	if issue.GetState() == "open" {
-		todo.Remove()
-	}
-}
 func convertTodosToOptions(todos []*Todo.Todo) []string {
 	var options []string
 	for _, todo := range todos {
@@ -117,7 +129,6 @@ func CheckBoxes(label string, todos []*Todo.Todo) []*Todo.Todo {
 		Options: options,
 	}
 	survey.AskOne(prompt, &selectedIndices)
-	fmt.Println(selectedIndices)
 	var selectedTodos []*Todo.Todo
 	for _, index := range selectedIndices {
 		selectedTodos = append(selectedTodos, todos[index])
