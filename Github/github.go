@@ -28,6 +28,7 @@ type Issue struct {
 	ID    int    `json:"id"`
 	Title string `json:"title"`
 	Body  string `json:"body"`
+	State string `json:"state"`
 }
 
 func ExportCommand(root *cobra.Command) {
@@ -40,7 +41,7 @@ func reportCommand() *cobra.Command {
 		Short: "List all the todos in the project and create issues for them",
 		Run: func(cmd *cobra.Command, args []string) {
 			project := Project.NewProject()
-			todos, err := project.ListAllTodos()
+			_, todos, err := project.ListAllTodos()
 			if err != nil {
 				log.Fatalf("Failed to list all todos in the project %s", err.Error())
 			}
@@ -61,6 +62,46 @@ func reportCommand() *cobra.Command {
 		},
 	}
 }
+func convertIssuesToOptions(issues []Issue) []string {
+	var options []string
+	for _, issue := range issues {
+		options = append(options, issue.Title)
+	}
+	return options
+}
+func DeleteIssues() []Issue {
+	issues := GetIssues()
+	var filteredIssues []Issue
+	for _, issue := range issues {
+		if issue.State != "open" {
+			filteredIssues = append(filteredIssues, issue)
+		}
+	}
+	issues = filteredIssues
+	options := convertIssuesToOptions(issues)
+	prompt := &survey.MultiSelect{
+		Message: "Select the issues you want to delete",
+		Options: options,
+	}
+	var selectedIndices []int
+	survey.AskOne(prompt, &selectedIndices)
+	var selectedIssues []Issue
+	for _, index := range selectedIndices {
+		selectedIssues = append(selectedIssues, issues[index])
+	}
+	return selectedIssues
+
+}
+func PurgeIssues(todo *Todo.Todo, client *github.Client, owner, repo string, ctx context.Context) {
+	id, _ := strconv.Atoi(*todo.ID)
+	issue, _, err := client.Issues.Get(ctx, owner, repo, id)
+	if err != nil {
+		log.Fatalf("Failed to get issue: %v", err)
+	}
+	if issue.GetState() == "open" {
+		todo.Remove()
+	}
+}
 func convertTodosToOptions(todos []*Todo.Todo) []string {
 	var options []string
 	for _, todo := range todos {
@@ -69,19 +110,19 @@ func convertTodosToOptions(todos []*Todo.Todo) []string {
 	return options
 }
 func CheckBoxes(label string, todos []*Todo.Todo) []*Todo.Todo {
-    var selectedIndices []int 
-    options := convertTodosToOptions(todos)
-    prompt := &survey.MultiSelect{
-        Message: label,
-        Options: options,
-    }
-    survey.AskOne(prompt, &selectedIndices)
+	var selectedIndices []int
+	options := convertTodosToOptions(todos)
+	prompt := &survey.MultiSelect{
+		Message: label,
+		Options: options,
+	}
+	survey.AskOne(prompt, &selectedIndices)
 	fmt.Println(selectedIndices)
-    var selectedTodos []*Todo.Todo
-    for _, index := range selectedIndices {
-        selectedTodos = append(selectedTodos, todos[index])
-    }
-    return selectedTodos
+	var selectedTodos []*Todo.Todo
+	for _, index := range selectedIndices {
+		selectedTodos = append(selectedTodos, todos[index])
+	}
+	return selectedTodos
 }
 func listAllIssues() {
 	cmd := exec.Command("gh", "issue", "list")
@@ -107,26 +148,30 @@ func getRepoInfo() (owner, repo string, err error) {
 	owner = parts[len(parts)-2]
 	return owner, repo, nil
 }
-func FireIssue(todo *Todo.Todo) error {
+func createClient() (*github.Client, context.Context) {
 	projectDir := viper.GetString("input")
 	err := godotenv.Load(projectDir + "/.env")
 	if err != nil {
 		log.Fatalf("Error loading .env file: %v", err)
 	}
-	// load the environment variables GITHUB_TOKEN
 	token := os.Getenv("GITHUB_TOKEN")
 	ctx := context.Background()
 	ts := oauth2.StaticTokenSource(&oauth2.Token{AccessToken: token})
 	tc := oauth2.NewClient(ctx, ts)
 	client := github.NewClient(tc)
+	return client, ctx
+}
+func FireIssue(todo *Todo.Todo) error {
+	client, ctx := createClient()
+	projectDir := viper.GetString("input")
 	owner, repo, err := getRepoInfo()
 	if err != nil {
 		log.Fatalf("Failed to get github url: %v", err)
 	}
-
+	body := Todo.StringifyDescription(todo.Description)
 	issue := &github.IssueRequest{
 		Title: &todo.Title,
-		Body:  &todo.Description,
+		Body:  &body,
 	}
 	var issu2 *github.Issue
 	issu2, _, err = client.Issues.Create(ctx, owner, repo, issue)
@@ -134,7 +179,7 @@ func FireIssue(todo *Todo.Todo) error {
 		log.Fatalf("Failed to create issue: %v", err)
 	}
 	id := strconv.Itoa(issu2.GetNumber())
-	todo.ID = &id
+	todo.Update(id, projectDir)
 	return nil
 }
 func GetIssues() []Issue {
@@ -162,8 +207,6 @@ func GetIssues() []Issue {
 	if err != nil {
 		log.Fatalf("Failed to unmarshal response body: %v", err)
 	}
-
-	PrintIssues(issues)
 
 	return issues
 }
