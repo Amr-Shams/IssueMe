@@ -163,14 +163,15 @@ func createClient() (*github.Client, context.Context) {
 }
 func FireIssue(todo *Todo.Todo) error {
 	client, ctx := createClient()
+	projectDir := viper.GetString("input")
 	owner, repo, err := getRepoInfo()
 	if err != nil {
 		log.Fatalf("Failed to get github url: %v", err)
 	}
-
+	body := Todo.StringifyDescription(todo.Description)
 	issue := &github.IssueRequest{
 		Title: &todo.Title,
-		Body:  &todo.Description[2],
+		Body:  &body,
 	}
 	var issu2 *github.Issue
 	issu2, _, err = client.Issues.Create(ctx, owner, repo, issue)
@@ -178,7 +179,7 @@ func FireIssue(todo *Todo.Todo) error {
 		log.Fatalf("Failed to create issue: %v", err)
 	}
 	id := strconv.Itoa(issu2.GetNumber())
-	todo.ID = &id
+	todo.Update(id, projectDir)
 	return nil
 }
 func GetIssues() []Issue {

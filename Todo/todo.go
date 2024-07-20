@@ -37,12 +37,12 @@ func StringifyDescription(description []string) string {
 	return str.String()
 }
 func (t *Todo) Remove() {
-	//TODO: Implement Remove
+	//TODO(51): Implement Remove
 }
 func (t *Todo) LogString() string {
 	return fmt.Sprintf("%s:%d %s\n%s", t.FileName, t.Line, t.String(), StringifyDescription(t.Description))
 }
-func (t *Todo) UpdateTodo(id string, projectPath string) {
+func (t *Todo) Update(id string, projectPath string) {
 	t.ID = &id
 	t.FileName = projectPath + "/" + t.FileName
 	file, err := os.Open(t.FileName)
