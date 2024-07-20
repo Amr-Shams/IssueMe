@@ -1,7 +1,6 @@
 package Project
 
-// TODO (45) Add functions to walk and retrieve the files in the project directory 
- 
+// TODO (45) Add functions to walk and retrieve the files in the project directory
 
 import (
 	"testing"
@@ -88,7 +87,7 @@ func TestParseLine(t *testing.T) {
 	project := NewProject()
 	project.Keywords = []string{"TODO", "FIXME"}
 	unreportedLine := "# TODO: This is an unreported todo"
-	reportedLine := "#FIXME(user): This is a reported fixme"
+	reportedLine := "#FIXME(19): This is a reported fixme"
 	commentInTheMiddle := "This is a comment #TODO(53): This is a todo"
 
 	unreportedTodo := project.parseLine(unreportedLine)
@@ -100,7 +99,7 @@ func TestParseLine(t *testing.T) {
 	require.Equal(t, "TODO", unreportedTodo.Keyword)
 	require.NotNil(t, reportedTodo)
 	require.Equal(t, "This is a reported fixme", reportedTodo.Suffix)
-	require.Equal(t, "user", *reportedTodo.ID)
+	require.Equal(t, "19", *reportedTodo.ID)
 	require.Equal(t, "FIXME", reportedTodo.Keyword)
 
 	commentTodo := project.parseLine(commentInTheMiddle)

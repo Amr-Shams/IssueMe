@@ -1,14 +1,10 @@
 package Project
 
-// FIXMEEE(49): This is a bug
-// TODO: This is a BUG
-// FIXME(44): This is a hack
-// BUG(43): This is a hack
-// This is bug is made by me
-
-// BUG(43): This is a hack
-// This is bug is made by me
-
+//
+// TODO(55): This is a BUG
+// We should fix this
+// it is important
+// And this is the description
 // This is bug is made by me
 // TODOOOO: this is the most important thing
 // TODO: we should beutify the logs (slogan)
@@ -294,8 +290,8 @@ func checkComment(line string) []string {
 		re := regexp.MustCompile(regex)
 		groups := re.FindStringSubmatch(line)
 		if groups != nil {
-			groups = append(groups, prefix)
-			return groups
+			groups = append(groups, prefix) //
+			return groups                   
 		}
 	}
 	return nil
