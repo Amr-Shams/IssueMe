@@ -20,6 +20,7 @@ import (
 	"strings"
 
 	"github.com/Amr-Shams/IssueMe/Todo"
+	Log "github.com/charmbracelet/log"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"gopkg.in/yaml.v2"
@@ -46,13 +47,12 @@ func listingCommand() *cobra.Command {
 				return unreportedTodos[i].Uergency > unreportedTodos[j].Uergency
 			})
 			for _, todo := range reportedTodos {
-				log.Printf(todo.LogString())
+				Log.Info(todo.LogString())
 			}
 			// print a separator between reported and unreported todos
 			fmt.Println("-------------------------------------------------")
 			for _, todo := range unreportedTodos {
-
-				log.Printf(todo.LogString())
+				Log.Info(todo.LogString())
 			}
 		},
 	}
@@ -291,7 +291,7 @@ func checkComment(line string) []string {
 		groups := re.FindStringSubmatch(line)
 		if groups != nil {
 			groups = append(groups, prefix) //
-			return groups                   
+			return groups
 		}
 	}
 	return nil

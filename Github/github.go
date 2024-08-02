@@ -19,6 +19,8 @@ import (
 	"github.com/Amr-Shams/IssueMe/Todo"
 	"github.com/google/go-github/v39/github"
 	"github.com/joho/godotenv"
+	"github.com/rs/zerolog"
+	Log "github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"golang.org/x/oauth2"
@@ -100,7 +102,8 @@ func FilterTodos(todos []*Todo.Todo) []*Todo.Todo {
 	for _, todo := range todos {
 		id, err := strconv.Atoi(*todo.ID)
 		if err != nil {
-			log.Printf("Failed to convert issue id to int: %v", err)
+			zerolog.TimeFieldFormat = zerolog.TimeFormatUnix
+			Log.Info().Msgf("Failed to convert issue id to int: %v", err)
 			continue
 		}
 		issue, _, err := client.Issues.Get(ctx, owner, repo, id)
