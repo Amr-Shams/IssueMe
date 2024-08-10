@@ -63,10 +63,29 @@ func LoadCache(projetDir string) (*Cache, error) {
 	return nil, nil
 }
 func (c *Cache) UpdateCache(projDir string, reportedTodos []*Todo.Todo, unreportedTodos []*Todo.Todo) error {
-	c.ReportedTodos = append(c.ReportedTodos, reportedTodos...)
-	c.UnreportedTodos = append(c.UnreportedTodos, unreportedTodos...)
+	for _, todo := range reportedTodos {
+		if !containsTodo(c.ReportedTodos, todo) {
+			c.ReportedTodos = append(c.ReportedTodos, todo)
+		}
+	}
+
+	for _, todo := range unreportedTodos {
+		if !containsTodo(c.UnreportedTodos, todo) {
+			c.UnreportedTodos = append(c.UnreportedTodos, todo)
+		}
+	}
 	return c.Save(projDir)
 }
+
+func containsTodo(todos []*Todo.Todo, todo *Todo.Todo) bool {
+	for _, t := range todos {
+		if t.String() == todo.String() {
+			return true
+		}
+	}
+	return false
+}
+
 func GetCommitHash() (string, error) {
 	cmd := exec.Command("git", "rev-parse", "HEAD")
 	output, err := cmd.Output()
