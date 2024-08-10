@@ -3,19 +3,20 @@ package util
 import (
 	"bufio"
 	"io"
+	"log"
 	"os"
 	"strings"
 )
 
 type Input struct {
 	scanner *bufio.Scanner
-	lines chan string
+	lines   chan string
 }
 
-func FromFile(path string) *Input{
+func FromFile(path string) *Input {
 	f, err := os.Open(path)
 	if err != nil {
-		panic(err)
+		log.Printf("Failed to open file %s: %s", path, err)
 	}
 
 	return newInputFromReader(f, f)
@@ -42,7 +43,7 @@ func newInputFromReader(r io.Reader, c io.Closer) *Input {
 			result.lines <- result.scanner.Text()
 		}
 
-		close(result.lines) 
+		close(result.lines)
 	}()
 
 	return result
@@ -52,36 +53,32 @@ func (c *Input) Lines() <-chan string {
 	return c.lines
 }
 
-
-func (c *Input) LineSlice()(result []string){
-    for line := range c.Lines() {
-                result = append(result, line)
-    }
-    return
+func (c *Input) LineSlice() (result []string) {
+	for line := range c.Lines() {
+		result = append(result, line)
+	}
+	return
 }
 
-func (c* Input) Sections() <-chan string {
-    result := make(chan string)
-    go func() {
-        var section string
-        for line := range c.Lines() {
-            if line == "" {
-                if len(section) > 0 {
-                    result <- section
-                    section ="" 
-                }
-            } else {
-                line += "\n"
-                section += line
-            }
-        }
-        if len(section) > 0 {
-            result <- section
-        }
-        close(result)
-    }()
-    return result
+func (c *Input) Sections() <-chan string {
+	result := make(chan string)
+	go func() {
+		var section string
+		for line := range c.Lines() {
+			if line == "" {
+				if len(section) > 0 {
+					result <- section
+					section = ""
+				}
+			} else {
+				line += "\n"
+				section += line
+			}
+		}
+		if len(section) > 0 {
+			result <- section
+		}
+		close(result)
+	}()
+	return result
 }
-
-
-

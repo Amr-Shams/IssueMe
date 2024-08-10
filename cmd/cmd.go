@@ -54,7 +54,7 @@ func NewRootCommand() *cobra.Command {
 	flags.Bool("profile", false, "Profile implementation performance")
 	flags.StringP("config", "c", "config.yaml", "Config file for the project")
 	flags.Bool("clear-cache", false, "Clear the cache for the project")
-	flags.StringP("cache", "a", "cache", "Cache directory for the project")
+	flags.StringP("cache", "a", ".cache.json", "Cache directory for the project")
 	_ = viper.BindPFlags(flags)
 
 	return result

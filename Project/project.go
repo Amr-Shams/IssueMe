@@ -107,6 +107,7 @@ func (p *Project) ListAllTodos() (reportedTodos []*Todo.Todo, unreportedTodos []
 	}
 	projectDir := p.LocateProject()
 	allFiles := viper.GetBool("clear-cache")
+
 	p.cacheMutex.Lock()
 	defer p.cacheMutex.Unlock()
 	p.cache, _ = util.LoadCache(projectDir)
@@ -118,28 +119,26 @@ func (p *Project) ListAllTodos() (reportedTodos []*Todo.Todo, unreportedTodos []
 			UnreportedTodos: make([]*Todo.Todo, 0),
 		}
 	}
+
 	err = p.processFiles(projectDir, allFiles, &reportedTodos, &unreportedTodos)
 	if err != nil {
 		return nil, nil, err
 	}
-
-	go func() {
-		if err := p.cache.UpdateCache(projectDir, reportedTodos, unreportedTodos); err != nil {
-			log.Fatalf("Failed to update cache %s", err.Error())
-		}
-	}()
+	if err := p.cache.UpdateCache(projectDir, reportedTodos, unreportedTodos); err != nil {
+		log.Fatalf("Failed to update cache %s", err.Error())
+	}
 	return p.cache.ReportedTodos, p.cache.UnreportedTodos, nil
 }
 
 func (p *Project) processFiles(projectDir string, allFiles bool, reportedTodos, unreportedTodos *[]*Todo.Todo) error {
 	files, err := util.GetFiles(projectDir, allFiles)
 	if err != nil {
-		return fmt.Errorf("failed to get files: %w", err)
+		return err
 	}
-
-	numWorkers := len(files)
+	numWorkers := 10
 	fileChan := make(chan string, len(files))
 	var wg sync.WaitGroup
+
 	for i := 0; i < numWorkers; i++ {
 		wg.Add(1)
 		go func() {

@@ -109,7 +109,7 @@ func GetModifiedFiles() ([]string, error) {
 	}
 	var modifiedFiles []string
 	for i, line := range strings.Split(strings.TrimSpace(string(output)), "\n") {
-		if len(line) > 3 {
+		if len(line) > 3 && line[0] != 'D'  && line[1] != 'D' {
 			if i == 0 {
 				modifiedFiles = append(modifiedFiles, line[2:])
 				continue
