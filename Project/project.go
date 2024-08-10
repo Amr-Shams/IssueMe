@@ -9,17 +9,17 @@ package Project
 // TODOOOO: this is the most important thing
 // TODO: we should beutify the logs (slogan)
 import (
-	"bufio"
 	"fmt"
 	"log"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"regexp"
 	"sort"
 	"strings"
+	"sync"
 
 	"github.com/Amr-Shams/IssueMe/Todo"
+	"github.com/Amr-Shams/IssueMe/util"
 	Log "github.com/charmbracelet/log"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -85,7 +85,11 @@ type Project struct {
 	Transforms []TransformRule `yaml:"Transforms"`
 	Keywords   []string        `yaml:"Keywords"`
 	Remote     string          `yaml:"Remote"`
+	cache      *util.Cache
+	cacheMutex sync.Mutex
 }
+
+var projectInstance *Project
 
 func (p *Project) LocateProject() string {
 	gitPath, err := locateDotGit()
@@ -97,100 +101,117 @@ func (p *Project) LocateProject() string {
 }
 
 func (p *Project) ListAllTodos() (reportedTodos []*Todo.Todo, unreportedTodos []*Todo.Todo, err error) {
-	p.WalkFiles(func(file string) error {
-		f, err := os.Open(file)
-		if err != nil {
-			log.Printf("Failed to open file %s", file)
-			return err
-		}
-		defer f.Close()
-		scanner := bufio.NewScanner(f)
-		line := 0
-		var todo *Todo.Todo
-		for scanner.Scan() {
-			line++
-			if todo == nil {
-				todo = p.parseLine(scanner.Text())
-				if todo != nil {
-					todo.Line = line
-					todo.FileName = file
-				}
-			} else {
-				if newTodo := p.parseLine(scanner.Text()); newTodo != nil {
-					if todo.ID != nil {
-						reportedTodos = append(reportedTodos, todo)
-					} else {
-						unreportedTodos = append(unreportedTodos, todo)
-					}
-					todo = newTodo
-					todo.Line = line
-					todo.FileName = file
-				} else if body := checkComment(scanner.Text()); body != nil {
-					todo.Description = append(todo.Description, body[1])
-					todo.Description = append(todo.Description, body[3])
-					todo.Description = append(todo.Description, body[2])
-				} else {
-					if todo.ID != nil {
-						reportedTodos = append(reportedTodos, todo)
-					} else {
-						unreportedTodos = append(unreportedTodos, todo)
-					}
-					todo = nil
-				}
-			}
-			if err := scanner.Err(); err != nil {
-				log.Printf("Failed to scan file %s", file)
-				return err
-			}
+	commitHash, err := util.GetCommitHash()
+	if err != nil {
+		log.Fatalf("Failed to get commit hash %s", err.Error())
+	}
+	projectDir := p.LocateProject()
+	allFiles := viper.GetBool("clear-cache")
 
+	p.cacheMutex.Lock()
+	defer p.cacheMutex.Unlock()
+	p.cache, _ = util.LoadCache(projectDir)
+	if p.cache == nil {
+		allFiles = true
+		p.cache = &util.Cache{
+			CommitHash:      commitHash,
+			ReportedTodos:   make([]*Todo.Todo, 0),
+			UnreportedTodos: make([]*Todo.Todo, 0),
 		}
-		return nil
-	})
-	return reportedTodos, unreportedTodos, nil
+	}
 
+	err = p.processFiles(projectDir, allFiles, &reportedTodos, &unreportedTodos)
+	if err != nil {
+		return nil, nil, err
+	}
+	if err := p.cache.UpdateCache(projectDir, reportedTodos, unreportedTodos); err != nil {
+		log.Fatalf("Failed to update cache %s", err.Error())
+	}
+	return p.cache.ReportedTodos, p.cache.UnreportedTodos, nil
 }
 
-// func to list all the files in the project using git ls-files
-
-func (p *Project) WalkFiles(visitor func(string) error) error {
-	projectPath := p.LocateProject()
-	if projectPath == "" {
-		return os.ErrNotExist
-	}
-	cmd := exec.Command("git", "ls-files")
-	cmd.Dir = projectPath
-	out, err := cmd.Output()
+func (p *Project) processFiles(projectDir string, allFiles bool, reportedTodos, unreportedTodos *[]*Todo.Todo) error {
+	files, err := util.GetFiles(projectDir, allFiles)
 	if err != nil {
-		log.Fatalf("Failed to list files in project %s", err.Error())
 		return err
 	}
-	files := strings.Split(string(out), "\n")
+	numWorkers := 10
+	fileChan := make(chan string, len(files))
+	var wg sync.WaitGroup
+
+	for i := 0; i < numWorkers; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			for file := range fileChan {
+				err := p.processFile(file, reportedTodos, unreportedTodos)
+				if err != nil {
+					log.Printf("Failed to process file %s: %s", file, err)
+				}
+			}
+		}()
+	}
 	for _, file := range files {
 		if strings.HasPrefix(file, ".") || file == "" {
 			continue
 		}
-		absPath := filepath.Join(projectPath, file)
-		stat, err := os.Stat(absPath)
-		if err != nil {
-			log.Printf("Failed to stat file %s with error %s", absPath, err.Error())
-			return err
-		}
-		if stat.IsDir() {
-			log.Printf("Skipping directory %s", absPath)
-		}
-		err = visitor(absPath)
-		if err != nil {
-			return err
+		absPath := filepath.Join(projectDir, file)
+		fileChan <- absPath
+	}
+	close(fileChan)
+	wg.Wait()
+	return nil
+}
+
+func (p *Project) processFile(file string, reportedTodos, unreportedTodos *[]*Todo.Todo) error {
+	line := 0
+	input := util.FromFile(file)
+	var todo *Todo.Todo
+	for text := range input.Lines() {
+		line++
+		if todo == nil {
+			todo = p.parseLine(text)
+			if todo != nil {
+				todo.Line = line
+				todo.FileName = file
+			}
+		} else {
+			if newTodo := p.parseLine(text); newTodo != nil {
+				if todo.ID != nil {
+					*reportedTodos = append(*reportedTodos, todo)
+				} else {
+					*unreportedTodos = append(*unreportedTodos, todo)
+				}
+				todo = newTodo
+				todo.Line = line
+				todo.FileName = file
+			} else if body := checkComment(text); body != nil {
+				todo.Description = append(todo.Description, body[1])
+				todo.Description = append(todo.Description, body[3])
+				todo.Description = append(todo.Description, body[2])
+			} else {
+				if todo.ID != nil {
+					*reportedTodos = append(*reportedTodos, todo)
+				} else {
+					*unreportedTodos = append(*unreportedTodos, todo)
+				}
+				todo = nil
+			}
 		}
 	}
 	return nil
 }
+
 func NewProject() *Project {
-	project := &Project{
-		Transforms: make([]TransformRule, 0),
-		Keywords:   make([]string, 0),
-		Remote:     "origin",
+	if projectInstance == nil {
+		projectInstance = &Project{
+			Transforms: make([]TransformRule, 0),
+			Keywords:   make([]string, 0),
+			Remote:     "origin",
+		}
 	}
+
+	project := projectInstance
 	configPth := viper.GetString("config")
 	projectPath := viper.GetString("input")
 	configPth = filepath.Join(projectPath, configPth)
