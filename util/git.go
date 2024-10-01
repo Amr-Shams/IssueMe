@@ -88,6 +88,8 @@ func containsTodo(todos []*Todo.Todo, todo *Todo.Todo) bool {
 
 func GetCommitHash() (string, error) {
 	cmd := exec.Command("git", "rev-parse", "HEAD")
+	projectDir := viper.GetString("input")
+	cmd.Dir = projectDir
 	output, err := cmd.Output()
 	if err != nil {
 		return "", err
@@ -103,13 +105,15 @@ func GetFiles(projectDir string, allFiles bool) ([]string, error) {
 
 func GetModifiedFiles() ([]string, error) {
 	cmd := exec.Command("git", "status", "--porcelain")
+	projectDir := viper.GetString("input")
+	cmd.Dir = projectDir
 	output, err := cmd.Output()
 	if err != nil {
 		return nil, err
 	}
 	var modifiedFiles []string
 	for i, line := range strings.Split(strings.TrimSpace(string(output)), "\n") {
-		if len(line) > 3 && line[0] != 'D'  && line[1] != 'D' {
+		if len(line) > 3 && line[0] != 'D' && line[1] != 'D' {
 			if i == 0 {
 				modifiedFiles = append(modifiedFiles, line[2:])
 				continue

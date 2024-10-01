@@ -1,12 +1,13 @@
 package Project
 
 //
-// TODO(55): This is a BUG
-// We should fix this
-// it is important
-// And this is the description
-// This is bug is made by me
-// TODOOOO: this is the most important thing
+// 
+
+
+
+
+// TODOOOO(72): this is the most important thing
+// TODO(70): we should beutify the logs (slogan)
 // TODO: we should beutify the logs (slogan)
 import (
 	"fmt"

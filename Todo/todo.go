@@ -8,7 +8,7 @@ import (
 	"strings"
 )
 
-// FIXME: The todo should have the keyword used for the comment to clean it up when purging
+// FIXME(69): The todo should have the keyword used for the comment to clean it up when purging
 type Todo struct {
 	Prefix      string
 	Suffix      string

@@ -151,6 +151,8 @@ func listAllIssues() {
 
 func getRepoInfo() (owner, repo string, err error) {
 	cmd := exec.Command("git", "config", "--get", "remote.origin.url")
+	projectDir := viper.GetString("input")
+	cmd.Dir = projectDir
 	output, err := cmd.Output()
 	if err != nil {
 		return "", "", err
@@ -169,6 +171,7 @@ func createClient() (*github.Client, context.Context) {
 		log.Fatalf("Error loading .env file: %v", err)
 	}
 	token := os.Getenv("GITHUB_TOKEN")
+	fmt.Println(token)
 	ctx := context.Background()
 	ts := oauth2.StaticTokenSource(&oauth2.Token{AccessToken: token})
 	tc := oauth2.NewClient(ctx, ts)
@@ -179,6 +182,9 @@ func FireIssue(todo *Todo.Todo) error {
 	client, ctx := createClient()
 	projectDir := viper.GetString("input")
 	owner, repo, err := getRepoInfo()
+	if strings.HasPrefix(owner, "git@") {
+		owner = strings.TrimPrefix(owner, "git@github.com:")
+	}
 	if err != nil {
 		log.Fatalf("Failed to get github url: %v", err)
 	}
