@@ -98,7 +98,7 @@ func purgeCommand() *cobra.Command {
             if len(selected) != 0 {
                 CreateCommit(commitMessage)
             }
-        },
+        		},
 	}
 }
 func CreateCommit(commitMessage string) {
@@ -180,6 +180,9 @@ func getRepoInfo() (owner, repo string, err error) {
 	repoPart := parts[len(parts)-1]
 	repo = strings.TrimSuffix(repoPart, ".git")
 	owner = parts[len(parts)-2]
+	if strings.HasPrefix(owner, "git@") {
+		owner = strings.TrimPrefix(owner, "git@github.com:")
+	}
 	return owner, repo, nil
 }
 func createClient() (*github.Client, context.Context) {
@@ -189,7 +192,6 @@ func createClient() (*github.Client, context.Context) {
 		log.Fatalf("Error loading .env file: %v", err)
 	}
 	token := os.Getenv("GITHUB_TOKEN")
-	fmt.Println(token)
 	ctx := context.Background()
 	ts := oauth2.StaticTokenSource(&oauth2.Token{AccessToken: token})
 	tc := oauth2.NewClient(ctx, ts)
@@ -200,9 +202,6 @@ func FireIssue(todo *Todo.Todo) error {
 	client, ctx := createClient()
 	projectDir := viper.GetString("input")
 	owner, repo, err := getRepoInfo()
-	if strings.HasPrefix(owner, "git@") {
-		owner = strings.TrimPrefix(owner, "git@github.com:")
-	}
 	if err != nil {
 		log.Fatalf("Failed to get github url: %v", err)
 	}
