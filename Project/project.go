@@ -211,6 +211,7 @@ func NewProject() *Project {
 			Remote:     "origin",
 		}
 	}
+    projectInstance.Keywords = []string{"TODO", "FIXME", "HELP"}
 
 	project := projectInstance
 	configPth := viper.GetString("config")
@@ -220,6 +221,9 @@ func NewProject() *Project {
 		configPth = "config.yaml"
 	}
 	config, err := os.Open(configPth)
+     if os.IsNotExist(err) {
+        return project
+    }
 	if err != nil {
 		log.Fatalf("Failed to open config file %s", configPth)
 	}

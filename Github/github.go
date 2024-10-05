@@ -55,6 +55,7 @@ func reportCommand() *cobra.Command {
 			})
 			selected := CheckBoxes("Select the todos you want to create issues for", todos)
 			fmt.Printf("Selected %d todos\n", len(selected))
+            commitMessage := "Create issues for the following todos: "
 			for _, todo := range selected {
 				fmt.Printf("Creating issue for %s\n", todo.String())
 				err := FireIssue(todo)
@@ -63,7 +64,11 @@ func reportCommand() *cobra.Command {
 				}
 				fmt.Println("Issue created successfully")
 				fmt.Println("Issue ID: ", *todo.ID)
+                commitMessage += *todo.ID + " "
 			}
+            if len(selected) != 0 {
+               CreateCommit(commitMessage)
+            }
 		},
 	}
 }
@@ -83,15 +88,28 @@ func purgeCommand() *cobra.Command {
 				return todos[i].Uergency > todos[j].Uergency
 			})
 			selected := CheckBoxes("Select the todos you want to delete issues for", todos)
+            commitMessage:="removing the closed todos from the project: "
 
 			projectDir := viper.GetString("input")
 			for _, issue := range selected {
 				issue.Remove(projectDir)
+                commitMessage += *issue.ID + " "
 			}
-		},
+            if len(selected) != 0 {
+                CreateCommit(commitMessage)
+            }
+        },
 	}
 }
-
+func CreateCommit(commitMessage string) {
+    cmd := exec.Command("git", "commit", "-am", commitMessage)
+    projectDir := viper.GetString("input")
+    cmd.Dir = projectDir
+    err := cmd.Run()
+    if err != nil {
+        log.Fatalf("Failed to create commit: %v", err)
+    }
+}
 func FilterTodos(todos []*Todo.Todo) []*Todo.Todo {
 	client, ctx := createClient()
 	owner, repo, err := getRepoInfo()

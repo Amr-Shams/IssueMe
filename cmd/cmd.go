@@ -10,7 +10,9 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
-
+var (
+    validArgs =[]string{"list", "add", "update", "delete"}
+)
 func addCommand(root *cobra.Command) {
 	github.ExportCommand(root)
 	Project.ExportCommand(root)
@@ -45,6 +47,7 @@ func NewRootCommand() *cobra.Command {
 
 			fmt.Println("Took", time.Since(start))
 		},
+        ValidArgs: validArgs,
 	}
 
 	addCommand(result)
