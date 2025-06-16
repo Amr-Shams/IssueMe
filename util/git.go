@@ -11,6 +11,7 @@ import (
 	"github.com/spf13/viper"
 )
 
+// TODO(75): this should be more resilant
 type Cache struct {
 	CommitHash      string       `json:"commit_hash"`
 	ReportedTodos   []*Todo.Todo `json:"reported_todos"`

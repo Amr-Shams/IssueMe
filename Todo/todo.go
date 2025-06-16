@@ -55,7 +55,7 @@ func (t *Todo) Remove(projectPath string) {
 	descriptionIndex := 0
 	for scanner.Scan() {
 		lineNum++
-		if lineNum == t.Line {
+		if lineNum == t.Line && strings.HasPrefix(scanner.Text(), t.Prefix) {
 			tempFile.WriteString(t.Prefix + "\n")
 			todoFound = true
 			continue
