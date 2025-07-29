@@ -3,9 +3,9 @@ package Project
 //
 //
 
-// TODOOOO(72): this is the most important thing
-// TODO(70): we should beutify the logs (slogan)
-// TODO(74): we should beutify the logs (slogan)
+// 
+// 
+// 
 import (
 	"fmt"
 	"log"

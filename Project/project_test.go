@@ -86,9 +86,9 @@ func TestParseReportedTodoLine(t *testing.T) {
 func TestParseLine(t *testing.T) {
 	project := NewProject()
 	project.Keywords = []string{"TODO", "FIXME"}
-	unreportedLine := "# TODO(71): This is an unreported todo"
-	reportedLine := "#
-	commentInTheMiddle := "This is a comment #TODO(53): This is a todo"
+	unreportedLine := "# 
+	reportedLine := "
+	commentInTheMiddle := "This is a comment #
 
 	unreportedTodo := project.parseLine(unreportedLine)
 	reportedTodo := project.parseLine(reportedLine)
