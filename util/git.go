@@ -14,7 +14,6 @@ import (
 // this should be removed from there and the the line numebr shouldn't be the identirfuer of the line
 // the purge is so dangrous btw
 
-// 
 type Cache struct {
 	CommitHash      string       `json:"commit_hash"`
 	ReportedTodos   []*Todo.Todo `json:"reported_todos"`

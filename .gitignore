@@ -2,3 +2,5 @@
 .env
 # ignore .cashe.json 
 .cache.json
+.kamal/
+main
